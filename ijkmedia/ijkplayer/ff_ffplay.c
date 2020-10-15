@@ -3884,6 +3884,11 @@ void ffp_global_init()
 #if CONFIG_AVFILTER
     avfilter_register_all();
 #endif
+    
+    /*
+     *  attention menthuguan
+     *  av_开头的初始化方法需要找下资料
+     */
     av_register_all();
 
     ijkav_register_all();

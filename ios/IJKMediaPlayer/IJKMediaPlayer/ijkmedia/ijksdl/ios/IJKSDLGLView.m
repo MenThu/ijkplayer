@@ -80,13 +80,19 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
     if (self) {
         _tryLockErrorCount = 0;
         _shouldLockWhileBeingMovedToWindow = YES;
+        
+        /*
+         *  attention menthuguan
+         *  递归锁
+         */
         self.glActiveLock = [[NSRecursiveLock alloc] init];
         _registeredNotifications = [[NSMutableArray alloc] init];
         [self registerApplicationObservers];
 
         _didSetupGL = NO;
-        if ([self isApplicationActive] == YES)
+        if ([self isApplicationActive] == YES){
             [self setupGLOnce];
+        }
     }
 
     return self;
@@ -332,6 +338,10 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
     return;
 }
 
+/*
+ *  attention menthuguan
+ *  渲染纹理？？
+ */
 - (void)display: (SDL_VoutOverlay *) overlay
 {
     if (_didSetupGL == NO)

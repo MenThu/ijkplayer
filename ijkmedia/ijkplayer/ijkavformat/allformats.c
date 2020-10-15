@@ -78,6 +78,14 @@ void ijkav_register_all(void)
 #ifdef __ANDROID__
     IJK_REGISTER_PROTOCOL(ijkmediadatasource);
 #endif
+    
+    
+    /*
+     *  attention menthuguan
+     申明了一堆方法，然后调用???
+     ijkav_register_ijkio_protocol ijkio.c
+     找不到ijkav_register_ijkio_protocol的实现
+     */
     IJK_REGISTER_PROTOCOL(ijkio);
     IJK_REGISTER_PROTOCOL(async);
     IJK_REGISTER_PROTOCOL(ijklongurl);

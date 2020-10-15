@@ -180,7 +180,10 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
 
     self = [super init];
     if (self) {
+        /** 初始化 attention menthuguan **/
         ijkmp_global_init();
+        
+        /** 注册回调函数 attention menthuguan **/
         ijkmp_global_set_inject_callback(ijkff_inject_callback);
 
         [IJKFFMoviePlayerController checkIfFFmpegVersionMatch:NO];
@@ -202,7 +205,13 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         _urlString = aUrlString;
 
         // init player
+        /*
+         *  IjkMediaPlayer结构体,内部有SDL相关的属性，后续关注
+         *  media_player_msg_loop函数指针
+         */
         _mediaPlayer = ijkmp_ios_create(media_player_msg_loop);
+        
+        
         _msgPool = [[IJKFFMoviePlayerMessagePool alloc] init];
         IJKWeakHolder *weakHolder = [IJKWeakHolder new];
         weakHolder.object = self;
@@ -237,6 +246,10 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         
         self.shouldShowHudView = options.showHudView;
 
+        /*
+         *  attention menthuguan
+         *  将glView设置到IjkMediaPlayer->FFPlayer->SDL_Vout->SDL_Vout_Opaque->IJKSDLGLView<IJKSDLGLViewProtocol>
+         */
         ijkmp_ios_set_glview(_mediaPlayer, _glView);
         ijkmp_set_option(_mediaPlayer, IJKMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");
 #ifdef DEBUG
@@ -247,6 +260,11 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         // init audio sink
         [[IJKAudioKit sharedInstance] setupAudioSession];
 
+        /*
+         *  attention menthuguan
+         *  将options的所有配置应用到IjkMediaPlayer
+         *  max-fps、framedrop、video-pictq-size
+         */
         [options applyTo:_mediaPlayer];
         _pauseInBackground = NO;
 
