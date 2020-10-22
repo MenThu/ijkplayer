@@ -39,6 +39,10 @@ SDL_Thread *SDL_CreateThreadEx(SDL_Thread *thread, int (*fn)(void *), void *data
     thread->func = fn;
     thread->data = data;
     strlcpy(thread->name, name, sizeof(thread->name) - 1);
+    /*
+     attention menthuguan
+     这里的触发频率是怎样的？谁来触发SDL_RunThread的回调？
+     */
     int retval = pthread_create(&thread->id, NULL, SDL_RunThread, thread);
     if (retval)
         return NULL;

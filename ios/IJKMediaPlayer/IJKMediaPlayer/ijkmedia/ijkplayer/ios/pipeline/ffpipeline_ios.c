@@ -40,6 +40,10 @@ static IJKFF_Pipenode *func_open_video_decoder(IJKFF_Pipeline *pipeline, FFPlaye
     IJKFF_Pipenode* node = NULL;
     IJKFF_Pipeline_Opaque *opaque = pipeline->opaque;
     if (ffp->videotoolbox) {
+        /*
+         *  attention menthuguan
+         *  这块解码器是真的基于VideoToolBox完成的吗？代码最终还是调用到了avcodec文件内的的avcodec_decode_video2
+         */
         node = ffpipenode_create_video_decoder_from_ios_videotoolbox(ffp);
         if (!node)
             ALOGE("vtb fail!!! switch to ffmpeg decode!!!! \n");
@@ -65,6 +69,10 @@ static SDL_Class g_pipeline_class = {
     .name = "ffpipeline_ios",
 };
 
+/*
+ attention menthuguan
+ IJKMediaPlayer初始化完成后（ijkmp_ios_create），会初始化FFPlayer->pipeline
+ */
 IJKFF_Pipeline *ffpipeline_create_from_ios(FFPlayer *ffp)
 {
     IJKFF_Pipeline *pipeline = ffpipeline_alloc(&g_pipeline_class, sizeof(IJKFF_Pipeline_Opaque));

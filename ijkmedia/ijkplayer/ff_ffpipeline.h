@@ -36,6 +36,10 @@ struct IJKFF_Pipeline {
     SDL_Class             *opaque_class;
     IJKFF_Pipeline_Opaque *opaque;
 
+    /*
+     *  attention menthuguan
+     *  需要找到赋值的地方
+     */
     void            (*func_destroy)             (IJKFF_Pipeline *pipeline);
     IJKFF_Pipenode *(*func_open_video_decoder)  (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
     SDL_Aout       *(*func_open_audio_output)   (IJKFF_Pipeline *pipeline, FFPlayer *ffp);

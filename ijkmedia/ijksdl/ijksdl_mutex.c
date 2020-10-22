@@ -84,6 +84,10 @@ SDL_cond *SDL_CreateCond(void)
     if (!cond)
         return NULL;
 
+    /*
+     attention menthuguan
+     锁?s
+     */
     if (pthread_cond_init(&cond->id, NULL) != 0) {
         free(cond);
         return NULL;
@@ -115,6 +119,10 @@ int SDL_CondSignal(SDL_cond *cond)
     if (!cond)
         return -1;
 
+    /*
+     *  attention menthuguan
+     *  信号量
+     */
     return pthread_cond_signal(&cond->id);
 }
 

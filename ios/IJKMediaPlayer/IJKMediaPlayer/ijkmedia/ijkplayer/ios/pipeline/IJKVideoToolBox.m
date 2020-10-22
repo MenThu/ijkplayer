@@ -26,6 +26,10 @@
 #include "IJKVideoToolBoxAsync.h"
 #include "IJKVideoToolBoxSync.h"
 
+/*
+ attention menthuguan
+ VideoToolBox解码画面的赋值入口
+ */
 inline static Ijk_VideoToolBox *Ijk_VideoToolbox_CreateInternal(int async, FFPlayer* ffp, AVCodecContext* ic)
 {
     Ijk_VideoToolBox *vtb = (Ijk_VideoToolBox*) mallocz(sizeof(Ijk_VideoToolBox));

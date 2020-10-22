@@ -245,6 +245,9 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         [self setHudValue:nil forKey:@"t-http-seek"];
         
         self.shouldShowHudView = options.showHudView;
+        
+        
+        av_log(NULL, AV_LOG_INFO, "Menthuguan Test");
 
         /*
          *  attention menthuguan
@@ -408,6 +411,10 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
 
     [self setScreenOn:_keepScreenOnWhilePlaying];
 
+    /*
+     *  attention menthuguan
+     *  将urlString记录在IjkMediaPlayer->data_source
+     */
     ijkmp_set_data_source(_mediaPlayer, [_urlString UTF8String]);
     ijkmp_set_option(_mediaPlayer, IJKMP_OPT_CATEGORY_FORMAT, "safe", "0"); // for concat demuxer
 

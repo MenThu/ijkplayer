@@ -391,6 +391,11 @@ typedef struct VideoState {
 
     /* extra fields */
     SDL_mutex  *play_mutex; // only guard state, do not block any long operation
+    
+    /*
+     attention menthuguan
+     两个video_refresh_tid的作用是什么？
+     */
     SDL_Thread *video_refresh_tid;
     SDL_Thread _video_refresh_tid;
 
@@ -588,6 +593,10 @@ typedef struct FFPlayer {
     int seek_by_bytes;
     int display_disable;
     int show_status;
+    /*
+     attention menthuguan
+     同步策略:AV_SYNC_AUDIO_MASTER、AV_SYNC_VIDEO_MASTER、AV_SYNC_EXTERNAL_CLOCK
+     */
     int av_sync_type;
     int64_t start_time;
     int64_t duration;

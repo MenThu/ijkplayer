@@ -40,6 +40,10 @@ struct IjkMediaPlayer {
     SDL_Thread _msg_thread;
 
     int mp_state;
+    /*
+     attention menthuguan
+     mp4链接
+     */
     char *data_source;
     void *weak_thiz;
 

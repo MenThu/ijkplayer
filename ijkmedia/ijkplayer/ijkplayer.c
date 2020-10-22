@@ -361,6 +361,11 @@ static int ijkmp_set_data_source_l(IjkMediaPlayer *mp, const char *url)
     MPST_RET_IF_EQ(mp->mp_state, MP_STATE_END);
 
     freep((void**)&mp->data_source);
+    
+    /*
+     *  attention menthuguan
+     *  拷贝url字符串到新的位置，与free配套使用
+     */
     mp->data_source = strdup(url);
     if (!mp->data_source)
         return EIJK_OUT_OF_MEMORY;

@@ -30,6 +30,7 @@ typedef struct IJKFF_Pipenode_Opaque IJKFF_Pipenode_Opaque;
 typedef struct IJKFF_Pipenode IJKFF_Pipenode;
 struct IJKFF_Pipenode {
     SDL_mutex *mutex;
+    /** 其实这里是IJKFF_Pipenode_Opaque类型 attention menthuguan **/
     void *opaque;
 
     void (*func_destroy) (IJKFF_Pipenode *node);

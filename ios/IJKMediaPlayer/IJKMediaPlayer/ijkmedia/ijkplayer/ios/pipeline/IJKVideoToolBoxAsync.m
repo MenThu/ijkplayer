@@ -333,7 +333,10 @@ static void QueuePicture(Ijk_VideoToolBox_Opaque* ctx) {
     }
 }
 
-
+/*
+ attention menthuguan
+ 最新进度
+ */
 static void VTDecoderCallback(void *decompressionOutputRefCon,
                        void *sourceFrameRefCon,
                        OSStatus status,
@@ -960,6 +963,10 @@ void videotoolbox_async_free(Ijk_VideoToolBox_Opaque* context)
     avcodec_parameters_free(&context->codecpar);
 }
 
+/*
+ attention menthuguan
+ 视频异步解码????
+ */
 int videotoolbox_async_decode_frame(Ijk_VideoToolBox_Opaque* context)
 {
     FFPlayer *ffp = context->ffp;

@@ -668,6 +668,10 @@ static void frame_queue_unref_item(Frame *vp)
     avsubtitle_free(&vp->sub);
 }
 
+/*
+ attention menthuguan
+ 初始化锁与信号量
+ */
 static int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int keep_last)
 {
     int i;
@@ -879,6 +883,10 @@ static void video_image_display2(FFPlayer *ffp)
     vp = frame_queue_peek_last(&is->pictq);
 
     if (vp->bmp) {
+        /*
+         attention menthuguan
+         处理字幕
+         */
         if (is->subtitle_st) {
             if (frame_queue_nb_remaining(&is->subpq) > 0) {
                 sp = frame_queue_peek(&is->subpq);
@@ -900,6 +908,7 @@ static void video_image_display2(FFPlayer *ffp)
                 }
             }
         }
+        
         if (ffp->render_wait_start && !ffp->start_on_prepared && is->pause_req) {
             if (!ffp->first_video_frame_rendered) {
                 ffp->first_video_frame_rendered = 1;
@@ -1153,6 +1162,10 @@ static double get_master_clock(VideoState *is)
     return val;
 }
 
+/*
+ attention menthuguan
+ 音画同步的时钟？
+ */
 static void check_external_clock_speed(VideoState *is) {
    if ((is->video_stream >= 0 && is->videoq.nb_packets <= EXTERNAL_CLOCK_MIN_FRAMES) ||
        (is->audio_stream >= 0 && is->audioq.nb_packets <= EXTERNAL_CLOCK_MIN_FRAMES)) {
@@ -1413,6 +1426,10 @@ retry:
         }
 display:
         /* display picture */
+        /*
+         attention menthuguan
+         基于数据刷新IJKSDLGLView
+         */
         if (!ffp->display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
             video_display2(ffp);
     }
@@ -1490,7 +1507,7 @@ static void alloc_picture(FFPlayer *ffp, int frame_format)
     else
         sdl_format = SDL_PIXELFORMAT_ARGB8888;
 
-    if (realloc_texture(&vp->bmp, sdl_format, vp->width, vp->height, SDL_BLENDMODE_NONE, 0) < 0) {
+//    if (realloc_texture(&vp->bmp, sdl_format, vp->width, vp->height, SDL_BLENDMODE_NONE, 0) < 0) {
 #else
     /* RV16, RV32 contains only one plane */
     if (!vp->bmp || (!vp->bmp->is_private && vp->bmp->pitches[0] < vp->width)) {
@@ -2364,7 +2381,7 @@ static int subtitle_thread(void *arg)
 
         pts = 0;
 #ifdef FFP_MERGE
-        if (got_subtitle && sp->sub.format == 0) {
+//        if (got_subtitle && sp->sub.format == 0) {
 #else
         if (got_subtitle) {
 #endif
@@ -3115,6 +3132,10 @@ static int read_thread(void *arg)
         av_dict_set_int(&ffp->format_opts, "skip-calc-frame-rate", ffp->skip_calc_frame_rate, 0);
     }
 
+    /*
+     attention menthuguan
+     看看这里的iformat_name代表什么
+     */
     if (ffp->iformat_name)
         is->iformat = av_find_input_format(ffp->iformat_name);
  
@@ -3124,6 +3145,12 @@ static int read_thread(void *arg)
         av_dict_set_int(&ffp->format_opts, "las_player_statistic", (intptr_t) (&ffp->las_player_statistic), 0);
         ffp->find_stream_info = false;
     }
+    
+    /*
+     attention menthuguan
+     打开MP4链接指定视频资源
+     关注下ic的streams和nb_streams变量
+     */
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
     if (err < 0) {
         print_error(is->filename, err);
@@ -3467,7 +3494,7 @@ static int read_thread(void *arg)
         /* if the queue are full, no need to read more */
         if (ffp->infinite_buffer<1 && !is->seek_req &&
 #ifdef FFP_MERGE
-              (is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE
+//              (is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE
 #else
               (is->audioq.size + is->videoq.size + is->subtitleq.size > ffp->dcc.max_buffer_size
 #endif
@@ -3711,12 +3738,20 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     ffp->is = is;
     is->pause_req = !ffp->start_on_prepared;
 
+    /*
+     attention menthuguan
+     video_refresh_thread视频刷新的回调函数
+     */
     is->video_refresh_tid = SDL_CreateThreadEx(&is->_video_refresh_tid, video_refresh_thread, ffp, "ff_vout");
     if (!is->video_refresh_tid) {
         av_freep(&ffp->is);
         return NULL;
     }
 
+    /*
+     attention menthuguan
+     read_thread从url读书数据
+     */
     is->initialized_decoder = 0;
     is->read_tid = SDL_CreateThreadEx(&is->_read_tid, read_thread, ffp, "ff_read");
     if (!is->read_tid) {
@@ -3990,6 +4025,10 @@ static const char *ijk_version_info()
 
 FFPlayer *ffp_create()
 {
+    /*
+     attention menthuguan
+     FFPlayer创建处
+     */
     av_log(NULL, AV_LOG_INFO, "av_version_info: %s\n", av_version_info());
     av_log(NULL, AV_LOG_INFO, "ijk_version_info: %s\n", ijk_version_info());
 

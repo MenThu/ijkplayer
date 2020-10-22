@@ -69,6 +69,10 @@ Uint64 SDL_GetTickHR(void)
 #endif
     clock = now.tv_sec * 1000 + now.tv_nsec / 1000000;
 #elif defined(__APPLE__)
+    /*
+     *  attention menthuguan
+     *  获取时间戳，单位是毫秒，微妙还是其它？
+     */
     if (!g_is_mach_base_info_inited) {
         g_mach_base_info_ret = mach_timebase_info(&g_mach_base_info);
         g_is_mach_base_info_inited = 1;

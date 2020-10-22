@@ -36,7 +36,6 @@
 
 + (IJKFFOptions *)optionsByDefault
 {
-    URLProtocol temp = nil;
     IJKFFOptions *options = [[IJKFFOptions alloc] init];
 
     [options setPlayerOptionIntValue:30     forKey:@"max-fps"];

@@ -824,6 +824,10 @@ void videotoolbox_sync_free(Ijk_VideoToolBox_Opaque* context)
     avcodec_parameters_free(&context->codecpar);
 }
 
+/*
+ attention menthuguan
+ 视频同步解码????
+ */
 int videotoolbox_sync_decode_frame(Ijk_VideoToolBox_Opaque* context)
 {
     FFPlayer *ffp = context->ffp;
