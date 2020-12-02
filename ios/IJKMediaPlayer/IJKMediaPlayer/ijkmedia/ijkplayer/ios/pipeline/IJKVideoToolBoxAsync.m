@@ -294,9 +294,6 @@ static CMSampleBufferRef CreateSampleBufferFrom(CMFormatDescriptionRef fmt_desc,
     }
 }
 
-
-
-
 static bool GetVTBPicture(Ijk_VideoToolBox_Opaque* context, AVFrame* pVTBPicture)
 {
     if (context->m_sort_queue == NULL) {
@@ -333,10 +330,6 @@ static void QueuePicture(Ijk_VideoToolBox_Opaque* ctx) {
     }
 }
 
-/*
- attention menthuguan
- 最新进度
- */
 static void VTDecoderCallback(void *decompressionOutputRefCon,
                        void *sourceFrameRefCon,
                        OSStatus status,
@@ -1168,6 +1161,10 @@ fail:
     return -1;
 }
 
+/*
+ attention menthuguan
+ 包装解码器的类
+ */
 Ijk_VideoToolBox_Opaque* videotoolbox_async_create(FFPlayer* ffp, AVCodecContext* avctx)
 {
     int ret = 0;
@@ -1197,6 +1194,10 @@ Ijk_VideoToolBox_Opaque* videotoolbox_async_create(FFPlayer* ffp, AVCodecContext
     context_vtb->ffp = ffp;
     context_vtb->idr_based_identified = true;
 
+    /*
+     attention menthuguan
+     初始化编码器相关的参数？
+     */
     ret = vtbformat_init(&context_vtb->fmt_desc, context_vtb->codecpar);
     if (ret)
         goto fail;

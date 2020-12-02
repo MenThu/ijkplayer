@@ -85,6 +85,9 @@ void ijkav_register_all(void)
      申明了一堆方法，然后调用???
      ijkav_register_ijkio_protocol ijkio.c
      找不到ijkav_register_ijkio_protocol的实现
+     
+     
+     protocol_list.c 中使用到了这些protocol
      */
     IJK_REGISTER_PROTOCOL(ijkio);
     IJK_REGISTER_PROTOCOL(async);

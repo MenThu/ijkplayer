@@ -106,6 +106,10 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_ios_videotoolbox(FFPlayer *
     VideoState            *is         = ffp->is;
     IJKFF_Pipenode_Opaque *opaque     = node->opaque;
     node->func_destroy  = func_destroy;
+    /*
+     attention menthuguan
+     ff_ffplay.c的video_thead通过func_run_sync来解码图像数据
+     */
     node->func_run_sync = func_run_sync;
     opaque->ffp         = ffp;
     opaque->decoder     = &is->viddec;

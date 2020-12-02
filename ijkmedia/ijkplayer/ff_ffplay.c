@@ -577,6 +577,10 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
 
                 switch (d->avctx->codec_type) {
                     case AVMEDIA_TYPE_VIDEO:
+                        /*
+                         attention menthuguan
+                         获取解码后的视频帧
+                         */
                         ret = avcodec_receive_frame(d->avctx, frame);
                         if (ret >= 0) {
                             ffp->stat.vdps = SDL_SpeedSamplerAdd(&ffp->vdps_sampler, FFP_SHOW_VDPS_AVCODEC, "vdps[avcodec]");
@@ -645,6 +649,10 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                     ret = got_frame ? 0 : (pkt.data ? AVERROR(EAGAIN) : AVERROR_EOF);
                 }
             } else {
+                /*
+                 attention menthuguan
+                 发送待解码的包
+                 */
                 if (avcodec_send_packet(d->avctx, &pkt) == AVERROR(EAGAIN)) {
                     av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
                     d->packet_pending = 1;
@@ -880,6 +888,10 @@ static void video_image_display2(FFPlayer *ffp)
     Frame *vp;
     Frame *sp = NULL;
 
+    /*
+     attention menthuguan
+     视频画面的数据存储在FFPlayer->VideoState->pictq【FrameQueue】中
+     */
     vp = frame_queue_peek_last(&is->pictq);
 
     if (vp->bmp) {
@@ -1425,7 +1437,6 @@ retry:
             SDL_UnlockMutex(ffp->is->play_mutex);
         }
 display:
-        /* display picture */
         /*
          attention menthuguan
          基于数据刷新IJKSDLGLView
@@ -2190,6 +2201,10 @@ static int decoder_start(Decoder *d, int (*fn)(void *), void *arg, const char *n
     return 0;
 }
 
+/*
+ attention menthuguan
+ 目前播放mp4时最终会进入此方法进行视频帧的解码
+ */
 static int ffplay_video_thread(void *arg)
 {
     FFPlayer *ffp = arg;
@@ -2838,6 +2853,11 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
 
     if (stream_index < 0 || stream_index >= ic->nb_streams)
         return -1;
+    /*
+     attention menthuguan
+     生成解码器上下文
+     参数为NULL，则设置默认的参数，可能导致设置的参数不是最优的
+     */
     avctx = avcodec_alloc_context3(NULL);
     if (!avctx)
         return AVERROR(ENOMEM);
@@ -2973,6 +2993,10 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
                 ret = ffpipeline_config_video_decoder(ffp->pipeline, ffp);
             }
             if (ret || !ffp->node_vdec) {
+                /*
+                 attention menthuguan
+                 这里把is->videoq的地址赋给了is->viddec->queue
+                 */
                 decoder_init(&is->viddec, avctx, &is->videoq, is->continue_read_thread);
                 ffp->node_vdec = ffpipeline_open_video_decoder(ffp->pipeline, ffp);
                 if (!ffp->node_vdec)
@@ -2984,6 +3008,11 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
             if (!ffp->node_vdec)
                 goto fail;
         }
+            
+            /*
+             attention menthuguan
+             创建解码线程与回调函数
+             */
         if ((ret = decoder_start(&is->viddec, video_thread, ffp, "ff_video_dec")) < 0)
             goto out;
 
@@ -3108,6 +3137,10 @@ static int read_thread(void *arg)
     is->last_subtitle_stream = is->subtitle_stream = -1;
     is->eof = 0;
 
+    /*
+     attention menthuguan
+     ffmpeng相关操作
+     */
     ic = avformat_alloc_context();
     if (!ic) {
         av_log(NULL, AV_LOG_FATAL, "Could not allocate context.\n");
@@ -3136,8 +3169,9 @@ static int read_thread(void *arg)
      attention menthuguan
      看看这里的iformat_name代表什么
      */
-    if (ffp->iformat_name)
+    if (ffp->iformat_name){
         is->iformat = av_find_input_format(ffp->iformat_name);
+    }
  
     if (ffp->is_manifest) {
         extern AVInputFormat ijkff_las_demuxer;
@@ -3149,7 +3183,7 @@ static int read_thread(void *arg)
     /*
      attention menthuguan
      打开MP4链接指定视频资源
-     关注下ic的streams和nb_streams变量
+     方法内部基于tcp和http读取视频数据(http.c、tcp.c)
      */
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
     if (err < 0) {
@@ -3174,6 +3208,10 @@ static int read_thread(void *arg)
     if (ffp->genpts)
         ic->flags |= AVFMT_FLAG_GENPTS;
 
+    /*
+     attention menthuguan
+     注入额外数据？？？
+     */
     av_format_inject_global_side_data(ic);
     //
     //AVDictionary **opts;
@@ -3314,6 +3352,10 @@ static int read_thread(void *arg)
 
     ret = -1;
     if (st_index[AVMEDIA_TYPE_VIDEO] >= 0) {
+        /*
+         attention menthuguan
+         打开视频流，指定解码线程与回调函数
+         */
         ret = stream_component_open(ffp, st_index[AVMEDIA_TYPE_VIDEO]);
     }
     if (is->show_mode == SHOW_MODE_NONE)
@@ -3324,6 +3366,10 @@ static int read_thread(void *arg)
     }
     ffp_notify_msg1(ffp, FFP_MSG_COMPONENT_OPEN);
 
+    /*
+     attention menthuguan
+     这里能获取到meta数据了
+     */
     if (!ffp->ijkmeta_delay_init) {
         ijkmeta_set_avformat_context_l(ffp->meta, ic);
     }
@@ -3400,6 +3446,10 @@ static int read_thread(void *arg)
             continue;
         }
 #endif
+        /*
+         attention menthuguan
+         是否有指定位置播放的需求
+         */
         if (is->seek_req) {
             int64_t seek_target = is->seek_pos;
             int64_t seek_min    = is->seek_rel > 0 ? seek_target - is->seek_rel + 2: INT64_MIN;
@@ -3547,6 +3597,11 @@ static int read_thread(void *arg)
             }
         }
         pkt->flags = 0;
+        
+        /*
+         attention menthuguan
+         从流中读取一帧数据
+         */
         ret = av_read_frame(ic, pkt);
         if (ret < 0) {
             int pb_eof = 0;
@@ -3625,6 +3680,10 @@ static int read_thread(void *arg)
             packet_queue_put(&is->audioq, pkt);
         } else if (pkt->stream_index == is->video_stream && pkt_in_play_range
                    && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
+            /*
+             attention menthuguan
+             将读取到的视频帧放入VideoState->videoq中【PacketQueue】
+             */
             packet_queue_put(&is->videoq, pkt);
         } else if (pkt->stream_index == is->subtitle_stream && pkt_in_play_range) {
             packet_queue_put(&is->subtitleq, pkt);
@@ -3636,6 +3695,10 @@ static int read_thread(void *arg)
 
         if (ffp->ijkmeta_delay_init && !init_ijkmeta &&
                 (ffp->first_video_frame_rendered || !is->video_st) && (ffp->first_audio_frame_rendered || !is->audio_st)) {
+            /*
+             attention menthuguan
+             META数据很重要
+             */
             ijkmeta_set_avformat_context_l(ffp->meta, ic);
             init_ijkmeta = 1;
         }
@@ -4340,6 +4403,10 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
 
     av_opt_set_dict(ffp, &ffp->player_opts);
     if (!ffp->aout) {
+        /*
+         attention menthuguan
+         在iOS平台上，音频是基于Audio Unit输出的
+         */
         ffp->aout = ffpipeline_open_audio_output(ffp->pipeline, ffp);
         if (!ffp->aout)
             return -1;
