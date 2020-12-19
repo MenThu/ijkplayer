@@ -18,10 +18,18 @@
 #import "IJKAppDelegate.h"
 #import "IJKDemoMainViewController.h"
 
+BOOL testMehod(int count);
+
 @implementation IJKAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+//    BOOL isEven = NO;
+//    if ((isEven = testMehod(4))) {
+//        NSLog(@"YES");
+//    }else{
+//        NSLog(@"NO");
+//    }
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:[[IJKDemoMainViewController alloc] init]];
@@ -32,6 +40,10 @@
     [self.window makeKeyAndVisible];
     
     return YES;
+}
+
+BOOL testMehod(int count){
+    return count % 2 == 0;
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application

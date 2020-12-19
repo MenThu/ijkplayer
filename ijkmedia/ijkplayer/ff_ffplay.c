@@ -3168,11 +3168,20 @@ static int read_thread(void *arg)
     /*
      attention menthuguan
      看看这里的iformat_name代表什么
+     在播放mp4场景请，iformat_name为NULL
      */
     if (ffp->iformat_name){
+        /*
+         attention menthuguan
+         libavformat/format.c
+         */
         is->iformat = av_find_input_format(ffp->iformat_name);
     }
  
+    /*
+     attention menthuguan
+     从代码层面看，is_manifest是做数据统计的，ijkplayer一般赋值为0
+     */
     if (ffp->is_manifest) {
         extern AVInputFormat ijkff_las_demuxer;
         is->iformat = &ijkff_las_demuxer;

@@ -544,6 +544,7 @@ inline static int getPlayerOption(IJKFFOptionCategory category)
 
 + (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert;
 {
+    return YES;
     const char *actualVersion = av_version_info();
     const char *expectVersion = kIJKFFRequiredFFmpegVersion;
     if (0 == strcmp(actualVersion, expectVersion)) {
