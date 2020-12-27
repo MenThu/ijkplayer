@@ -3933,6 +3933,7 @@ inline static int log_level_av_to_ijk(int av_level)
 
 inline static int log_level_ijk_to_av(int ijk_level)
 {
+    return AV_LOG_TRACE;
     int av_level = IJK_LOG_VERBOSE;
     if      (ijk_level >= IJK_LOG_SILENT)   av_level = AV_LOG_QUIET;
     else if (ijk_level >= IJK_LOG_FATAL)    av_level = AV_LOG_FATAL;
