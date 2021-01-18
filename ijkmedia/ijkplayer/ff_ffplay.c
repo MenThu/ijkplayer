@@ -2925,142 +2925,144 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     is->eof = 0;
     ic->streams[stream_index]->discard = AVDISCARD_DEFAULT;
     switch (avctx->codec_type) {
-    case AVMEDIA_TYPE_AUDIO:
+        case AVMEDIA_TYPE_AUDIO:{
 #if CONFIG_AVFILTER
-        {
-            AVFilterContext *sink;
-
-            is->audio_filter_src.freq           = avctx->sample_rate;
-            is->audio_filter_src.channels       = avctx->channels;
-            is->audio_filter_src.channel_layout = get_valid_channel_layout(avctx->channel_layout, avctx->channels);
-            is->audio_filter_src.fmt            = avctx->sample_fmt;
-            SDL_LockMutex(ffp->af_mutex);
-            if ((ret = configure_audio_filters(ffp, ffp->afilters, 0)) < 0) {
+            {
+                AVFilterContext *sink;
+                
+                is->audio_filter_src.freq           = avctx->sample_rate;
+                is->audio_filter_src.channels       = avctx->channels;
+                is->audio_filter_src.channel_layout = get_valid_channel_layout(avctx->channel_layout, avctx->channels);
+                is->audio_filter_src.fmt            = avctx->sample_fmt;
+                SDL_LockMutex(ffp->af_mutex);
+                if ((ret = configure_audio_filters(ffp, ffp->afilters, 0)) < 0) {
+                    SDL_UnlockMutex(ffp->af_mutex);
+                    goto fail;
+                }
+                ffp->af_changed = 0;
                 SDL_UnlockMutex(ffp->af_mutex);
-                goto fail;
+                sink = is->out_audio_filter;
+                sample_rate    = av_buffersink_get_sample_rate(sink);
+                nb_channels    = av_buffersink_get_channels(sink);
+                channel_layout = av_buffersink_get_channel_layout(sink);
             }
-            ffp->af_changed = 0;
-            SDL_UnlockMutex(ffp->af_mutex);
-            sink = is->out_audio_filter;
-            sample_rate    = av_buffersink_get_sample_rate(sink);
-            nb_channels    = av_buffersink_get_channels(sink);
-            channel_layout = av_buffersink_get_channel_layout(sink);
-        }
 #else
-        sample_rate    = avctx->sample_rate;
-        nb_channels    = avctx->channels;
-        channel_layout = avctx->channel_layout;
+            sample_rate    = avctx->sample_rate;
+            nb_channels    = avctx->channels;
+            channel_layout = avctx->channel_layout;
 #endif
-
-        /* prepare audio output */
-        if ((ret = audio_open(ffp, channel_layout, nb_channels, sample_rate, &is->audio_tgt)) < 0)
-            goto fail;
-        ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
-        is->audio_hw_buf_size = ret;
-        is->audio_src = is->audio_tgt;
-        is->audio_buf_size  = 0;
-        is->audio_buf_index = 0;
-
-        /* init averaging filter */
-        is->audio_diff_avg_coef  = exp(log(0.01) / AUDIO_DIFF_AVG_NB);
-        is->audio_diff_avg_count = 0;
-        /* since we do not have a precise anough audio FIFO fullness,
-           we correct audio sync only if larger than this threshold */
-        is->audio_diff_threshold = 2.0 * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec;
-
-        is->audio_stream = stream_index;
-        is->audio_st = ic->streams[stream_index];
-
-        decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread);
-        if ((is->ic->iformat->flags & (AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) && !is->ic->iformat->read_seek) {
-            is->auddec.start_pts = is->audio_st->start_time;
-            is->auddec.start_pts_tb = is->audio_st->time_base;
+            
+            /* prepare audio output */
+            if ((ret = audio_open(ffp, channel_layout, nb_channels, sample_rate, &is->audio_tgt)) < 0)
+                goto fail;
+            ffp_set_audio_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
+            is->audio_hw_buf_size = ret;
+            is->audio_src = is->audio_tgt;
+            is->audio_buf_size  = 0;
+            is->audio_buf_index = 0;
+            
+            /* init averaging filter */
+            is->audio_diff_avg_coef  = exp(log(0.01) / AUDIO_DIFF_AVG_NB);
+            is->audio_diff_avg_count = 0;
+            /* since we do not have a precise anough audio FIFO fullness,
+             we correct audio sync only if larger than this threshold */
+            is->audio_diff_threshold = 2.0 * is->audio_hw_buf_size / is->audio_tgt.bytes_per_sec;
+            
+            is->audio_stream = stream_index;
+            is->audio_st = ic->streams[stream_index];
+            
+            decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread);
+            if ((is->ic->iformat->flags & (AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) && !is->ic->iformat->read_seek) {
+                is->auddec.start_pts = is->audio_st->start_time;
+                is->auddec.start_pts_tb = is->audio_st->time_base;
+            }
+            if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
+                goto out;
+            SDL_AoutPauseAudio(ffp->aout, 0);
         }
-        if ((ret = decoder_start(&is->auddec, audio_thread, ffp, "ff_audio_dec")) < 0)
-            goto out;
-        SDL_AoutPauseAudio(ffp->aout, 0);
-        break;
-    case AVMEDIA_TYPE_VIDEO:
-        is->video_stream = stream_index;
-        is->video_st = ic->streams[stream_index];
-
-        if (ffp->async_init_decoder) {
-            while (!is->initialized_decoder) {
-                SDL_Delay(5);
-            }
-            if (ffp->node_vdec) {
-                is->viddec.avctx = avctx;
-                ret = ffpipeline_config_video_decoder(ffp->pipeline, ffp);
-            }
-            if (ret || !ffp->node_vdec) {
-                /*
-                 attention menthuguan
-                 这里把is->videoq的地址赋给了is->viddec->queue
-                 */
+            break;
+        case AVMEDIA_TYPE_VIDEO:{
+            is->video_stream = stream_index;
+            is->video_st = ic->streams[stream_index];
+            
+            if (ffp->async_init_decoder) {
+                while (!is->initialized_decoder) {
+                    SDL_Delay(5);
+                }
+                if (ffp->node_vdec) {
+                    is->viddec.avctx = avctx;
+                    ret = ffpipeline_config_video_decoder(ffp->pipeline, ffp);
+                }
+                if (ret || !ffp->node_vdec) {
+                    /*
+                     attention menthuguan
+                     这里把is->videoq的地址赋给了is->viddec->queue
+                     */
+                    decoder_init(&is->viddec, avctx, &is->videoq, is->continue_read_thread);
+                    ffp->node_vdec = ffpipeline_open_video_decoder(ffp->pipeline, ffp);
+                    if (!ffp->node_vdec)
+                        goto fail;
+                }
+            } else {
                 decoder_init(&is->viddec, avctx, &is->videoq, is->continue_read_thread);
                 ffp->node_vdec = ffpipeline_open_video_decoder(ffp->pipeline, ffp);
                 if (!ffp->node_vdec)
                     goto fail;
             }
-        } else {
-            decoder_init(&is->viddec, avctx, &is->videoq, is->continue_read_thread);
-            ffp->node_vdec = ffpipeline_open_video_decoder(ffp->pipeline, ffp);
-            if (!ffp->node_vdec)
-                goto fail;
-        }
             
             /*
              attention menthuguan
              创建解码线程与回调函数
              */
-        if ((ret = decoder_start(&is->viddec, video_thread, ffp, "ff_video_dec")) < 0)
-            goto out;
-
-        is->queue_attachments_req = 1;
-
-        if (ffp->max_fps >= 0) {
-            if(is->video_st->avg_frame_rate.den && is->video_st->avg_frame_rate.num) {
-                double fps = av_q2d(is->video_st->avg_frame_rate);
-                SDL_ProfilerReset(&is->viddec.decode_profiler, fps + 0.5);
-                if (fps > ffp->max_fps && fps < 130.0) {
-                    is->is_video_high_fps = 1;
-                    av_log(ffp, AV_LOG_WARNING, "fps: %lf (too high)\n", fps);
-                } else {
-                    av_log(ffp, AV_LOG_WARNING, "fps: %lf (normal)\n", fps);
+            if ((ret = decoder_start(&is->viddec, video_thread, ffp, "ff_video_dec")) < 0)
+                goto out;
+            
+            is->queue_attachments_req = 1;
+            
+            if (ffp->max_fps >= 0) {
+                if(is->video_st->avg_frame_rate.den && is->video_st->avg_frame_rate.num) {
+                    double fps = av_q2d(is->video_st->avg_frame_rate);
+                    SDL_ProfilerReset(&is->viddec.decode_profiler, fps + 0.5);
+                    if (fps > ffp->max_fps && fps < 130.0) {
+                        is->is_video_high_fps = 1;
+                        av_log(ffp, AV_LOG_WARNING, "fps: %lf (too high)\n", fps);
+                    } else {
+                        av_log(ffp, AV_LOG_WARNING, "fps: %lf (normal)\n", fps);
+                    }
+                }
+                if(is->video_st->r_frame_rate.den && is->video_st->r_frame_rate.num) {
+                    double tbr = av_q2d(is->video_st->r_frame_rate);
+                    if (tbr > ffp->max_fps && tbr < 130.0) {
+                        is->is_video_high_fps = 1;
+                        av_log(ffp, AV_LOG_WARNING, "fps: %lf (too high)\n", tbr);
+                    } else {
+                        av_log(ffp, AV_LOG_WARNING, "fps: %lf (normal)\n", tbr);
+                    }
                 }
             }
-            if(is->video_st->r_frame_rate.den && is->video_st->r_frame_rate.num) {
-                double tbr = av_q2d(is->video_st->r_frame_rate);
-                if (tbr > ffp->max_fps && tbr < 130.0) {
-                    is->is_video_high_fps = 1;
-                    av_log(ffp, AV_LOG_WARNING, "fps: %lf (too high)\n", tbr);
-                } else {
-                    av_log(ffp, AV_LOG_WARNING, "fps: %lf (normal)\n", tbr);
-                }
+            
+            if (is->is_video_high_fps) {
+                avctx->skip_frame       = FFMAX(avctx->skip_frame, AVDISCARD_NONREF);
+                avctx->skip_loop_filter = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
+                avctx->skip_idct        = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
             }
         }
-
-        if (is->is_video_high_fps) {
-            avctx->skip_frame       = FFMAX(avctx->skip_frame, AVDISCARD_NONREF);
-            avctx->skip_loop_filter = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
-            avctx->skip_idct        = FFMAX(avctx->skip_loop_filter, AVDISCARD_NONREF);
+            break;
+        case AVMEDIA_TYPE_SUBTITLE:{
+            if (!ffp->subtitle) break;
+            
+            is->subtitle_stream = stream_index;
+            is->subtitle_st = ic->streams[stream_index];
+            
+            ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
+            
+            decoder_init(&is->subdec, avctx, &is->subtitleq, is->continue_read_thread);
+            if ((ret = decoder_start(&is->subdec, subtitle_thread, ffp, "ff_subtitle_dec")) < 0)
+                goto out;
         }
-
-        break;
-    case AVMEDIA_TYPE_SUBTITLE:
-        if (!ffp->subtitle) break;
-
-        is->subtitle_stream = stream_index;
-        is->subtitle_st = ic->streams[stream_index];
-
-        ffp_set_subtitle_codec_info(ffp, AVCODEC_MODULE_NAME, avcodec_get_name(avctx->codec_id));
-
-        decoder_init(&is->subdec, avctx, &is->subtitleq, is->continue_read_thread);
-        if ((ret = decoder_start(&is->subdec, subtitle_thread, ffp, "ff_subtitle_dec")) < 0)
-            goto out;
-        break;
-    default:
-        break;
+            break;
+        default:
+            break;
     }
     goto out;
 
@@ -3090,6 +3092,7 @@ static int stream_has_enough_packets(AVStream *st, int stream_id, PacketQueue *q
 
 static int is_realtime(AVFormatContext *s)
 {
+    av_log(NULL, AV_LOG_TRACE, "menthuguan s->iformat->name=[%s] s->filename=[%s]\n", s->iformat->name, s->filename);
     if(   !strcmp(s->iformat->name, "rtp")
        || !strcmp(s->iformat->name, "rtsp")
        || !strcmp(s->iformat->name, "sdp")
@@ -3192,7 +3195,7 @@ static int read_thread(void *arg)
     /*
      attention menthuguan
      打开MP4链接指定视频资源
-     方法内部基于tcp和http读取视频数据(http.c、tcp.c)
+     方法内部基于tcp和http读取视频数据(http.c、tcp.c)，如果视频容器格式为mp4，则会调用mov.c的一系列方法来解析box，并获取码率、关键帧信息的数据
      */
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
     if (err < 0) {
@@ -3202,8 +3205,9 @@ static int read_thread(void *arg)
     }
     ffp_notify_msg1(ffp, FFP_MSG_OPEN_INPUT);
 
-    if (scan_all_pmts_set)
+    if (scan_all_pmts_set){
         av_dict_set(&ffp->format_opts, "scan_all_pmts", NULL, AV_DICT_MATCH_CASE);
+    }
 
     if ((t = av_dict_get(ffp->format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
         av_log(NULL, AV_LOG_ERROR, "Option %s not found.\n", t->key);
@@ -3214,8 +3218,9 @@ static int read_thread(void *arg)
     }
     is->ic = ic;
 
-    if (ffp->genpts)
+    if (ffp->genpts){
         ic->flags |= AVFMT_FLAG_GENPTS;
+    }
 
     /*
      attention menthuguan
@@ -3229,6 +3234,11 @@ static int read_thread(void *arg)
     //orig_nb_streams = ic->nb_streams;
 
 
+    /*
+     attention menthuguan
+     这里是和编码器相关的操作吗？
+     */
+    
     if (ffp->find_stream_info) {
         AVDictionary **opts = setup_find_stream_info_opts(ic, ffp->codec_opts);
         int orig_nb_streams = ic->nb_streams;
@@ -3246,6 +3256,15 @@ static int read_thread(void *arg)
                 }
             }
             err = avformat_find_stream_info(ic, opts);
+            AVDictionary *tempOpts = (AVDictionary *)*opts;
+            AVDictionaryEntry *temp = NULL;
+            do {
+                temp = av_dict_get(tempOpts, "", t, AV_DICT_IGNORE_SUFFIX);
+                if (temp != NULL) {
+                    av_log(NULL, AV_LOG_TRACE, "menthuguan key=[%s] value=[%s]\n", temp->key, temp->value);
+                }
+            } while (temp != NULL);
+            
         } while(0);
         ffp_notify_msg1(ffp, FFP_MSG_FIND_STREAM_INFO);
 
@@ -3260,11 +3279,13 @@ static int read_thread(void *arg)
             goto fail;
         }
     }
-    if (ic->pb)
+    if (ic->pb){
         ic->pb->eof_reached = 0; // FIXME hack, ffplay maybe should not use avio_feof() to test for the end
+    }
 
-    if (ffp->seek_by_bytes < 0)
+    if (ffp->seek_by_bytes < 0){
         ffp->seek_by_bytes = !!(ic->iformat->flags & AVFMT_TS_DISCONT) && strcmp("ogg", ic->iformat->name);
+    }
 
     is->max_frame_duration = (ic->iformat->flags & AVFMT_TS_DISCONT) ? 10.0 : 3600.0;
     is->max_frame_duration = 10.0;
@@ -3301,9 +3322,11 @@ static int read_thread(void *arg)
         AVStream *st = ic->streams[i];
         enum AVMediaType type = st->codecpar->codec_type;
         st->discard = AVDISCARD_ALL;
-        if (type >= 0 && ffp->wanted_stream_spec[type] && st_index[type] == -1)
-            if (avformat_match_stream_specifier(ic, st, ffp->wanted_stream_spec[type]) > 0)
+        if (type >= 0 && ffp->wanted_stream_spec[type] && st_index[type] == -1){
+            if (avformat_match_stream_specifier(ic, st, ffp->wanted_stream_spec[type]) > 0){
                 st_index[type] = i;
+            }
+        }
 
         // choose first h264
 
@@ -3321,24 +3344,23 @@ static int read_thread(void *arg)
         st_index[AVMEDIA_TYPE_VIDEO] = first_h264_stream;
         av_log(NULL, AV_LOG_WARNING, "multiple video stream found, prefer first h264 stream: %d\n", first_h264_stream);
     }
-    if (!ffp->video_disable)
-        st_index[AVMEDIA_TYPE_VIDEO] =
-            av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO,
-                                st_index[AVMEDIA_TYPE_VIDEO], -1, NULL, 0);
-    if (!ffp->audio_disable)
-        st_index[AVMEDIA_TYPE_AUDIO] =
-            av_find_best_stream(ic, AVMEDIA_TYPE_AUDIO,
-                                st_index[AVMEDIA_TYPE_AUDIO],
-                                st_index[AVMEDIA_TYPE_VIDEO],
-                                NULL, 0);
-    if (!ffp->video_disable && !ffp->subtitle_disable)
-        st_index[AVMEDIA_TYPE_SUBTITLE] =
-            av_find_best_stream(ic, AVMEDIA_TYPE_SUBTITLE,
-                                st_index[AVMEDIA_TYPE_SUBTITLE],
-                                (st_index[AVMEDIA_TYPE_AUDIO] >= 0 ?
-                                 st_index[AVMEDIA_TYPE_AUDIO] :
-                                 st_index[AVMEDIA_TYPE_VIDEO]),
-                                NULL, 0);
+    if (!ffp->video_disable){
+        st_index[AVMEDIA_TYPE_VIDEO] = av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO, st_index[AVMEDIA_TYPE_VIDEO], -1, NULL, 0);
+    }
+    
+    if (!ffp->audio_disable){
+        st_index[AVMEDIA_TYPE_AUDIO] = av_find_best_stream(ic,
+                                                           AVMEDIA_TYPE_AUDIO,
+                                                           st_index[AVMEDIA_TYPE_AUDIO],
+                                                           st_index[AVMEDIA_TYPE_VIDEO], NULL, 0);
+    }
+        
+    if (!ffp->video_disable && !ffp->subtitle_disable){
+        st_index[AVMEDIA_TYPE_SUBTITLE] = av_find_best_stream(ic, AVMEDIA_TYPE_SUBTITLE, st_index[AVMEDIA_TYPE_SUBTITLE],
+                                                              (st_index[AVMEDIA_TYPE_AUDIO] >= 0 ?
+                                                               st_index[AVMEDIA_TYPE_AUDIO] : st_index[AVMEDIA_TYPE_VIDEO]),
+                                                              NULL, 0);
+    }
 
     is->show_mode = ffp->show_mode;
 #ifdef FFP_MERGE // bbc: dunno if we need this
@@ -3433,6 +3455,10 @@ static int read_thread(void *arg)
         ffp_seek_to_l(ffp, (long)(ffp->seek_at_start));
     }
 
+    /*
+     attention menthuguan
+     死循环从视频资源中读取帧数据
+     */
     for (;;) {
         if (is->abort_request)
             break;
@@ -3455,11 +3481,12 @@ static int read_thread(void *arg)
             continue;
         }
 #endif
-        /*
-         attention menthuguan
-         是否有指定位置播放的需求
-         */
         if (is->seek_req) {
+            /*
+             attention menthuguan
+             跳转播放
+             猜测内部应该会寻找跳转时间点之前最近的关键帧
+             */
             int64_t seek_target = is->seek_pos;
             int64_t seek_min    = is->seek_rel > 0 ? seek_target - is->seek_rel + 2: INT64_MIN;
             int64_t seek_max    = is->seek_rel < 0 ? seek_target - is->seek_rel - 2: INT64_MAX;

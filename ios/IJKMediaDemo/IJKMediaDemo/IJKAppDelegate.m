@@ -18,12 +18,13 @@
 #import "IJKAppDelegate.h"
 #import "IJKDemoMainViewController.h"
 
-BOOL testMehod(int count);
+void testMehod();
 
 @implementation IJKAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+    testMehod();
 //    BOOL isEven = NO;
 //    if ((isEven = testMehod(4))) {
 //        NSLog(@"YES");
@@ -42,8 +43,29 @@ BOOL testMehod(int count);
     return YES;
 }
 
-BOOL testMehod(int count){
-    return count % 2 == 0;
+#define MKTAG(a,b,c,d) ((a) | ((b) << 8) | ((c) << 16) | ((unsigned)(d) << 24))
+#define MKBETAG(a,b,c,d) ((d) | ((c) << 8) | ((b) << 16) | ((unsigned)(a) << 24))
+
+void testMehod(){
+    NSMutableArray <NSString *> *boxTypeArray = [NSMutableArray array];
+    [boxTypeArray addObject:@"ftyp"];
+    UInt32 value = MKTAG('f', 't', 'y', 'p');
+    for (int index = 0; index < boxTypeArray.count; index ++) {
+        NSString *type = boxTypeArray[index];
+        unsigned char temp[type.length];
+        for (NSInteger subIndex = type.length-1; subIndex >= 0; subIndex --) {
+            temp[type.length - subIndex - 1] = *[type substringWithRange:NSMakeRange(subIndex, 1)].UTF8String;
+        }
+        
+        unsigned char otherTemp[type.length];
+        for (NSInteger subIndex = 0; subIndex < type.length; subIndex ++) {
+            otherTemp[subIndex] = *[type substringWithRange:NSMakeRange(subIndex, 1)].UTF8String;
+        }
+        
+        NSLog(@"type=[%@][%u][%u][%u]", type, *(UInt32 *)temp, *(UInt32 *)otherTemp, value);
+    }
+    
+    
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application
